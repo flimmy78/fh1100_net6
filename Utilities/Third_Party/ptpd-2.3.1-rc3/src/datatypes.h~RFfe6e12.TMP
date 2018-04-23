@@ -1,0 +1,905 @@
+#ifndef DATATYPES_H_
+#define DATATYPES_H_
+
+#include "dep/datatypes_dep.h"
+#include "dep/constants_dep.h"
+#include "constants.h"
+/*Struct defined in spec*/
+
+
+/**
+*\file
+* \brief Main structures used in ptpdv2
+*
+* This header file defines structures defined by the spec,
+* main program data structure, and all messages structures
+ */
+
+
+/**
+* \brief The TimeInterval type represents time intervals
+ */
+typedef struct {
+	Integer64 scaledNanoseconds;
+} TimeInterval;
+
+/**
+* \brief The Timestamp type represents a positive time with respect to the epoch
+ */
+typedef struct  {
+    UInteger48 secondsField;
+    UInteger32 nanosecondsField;
+} Timestamp;
+
+/**
+* \brief The ClockIdentity type identifies a clock
+ */
+typedef Octet ClockIdentity[CLOCK_IDENTITY_LENGTH];
+
+/**
+* \brief The PortIdentity identifies a PTP port.
+ */
+typedef struct {
+	ClockIdentity clockIdentity;
+	UInteger16 portNumber;
+} PortIdentity;
+
+/**
+* \brief The PortAdress type represents the protocol address of a PTP port
+ */
+typedef struct {
+	Enumeration16 networkProtocol;
+	UInteger16 adressLength;
+	Octet* adressField;
+} PortAddress;
+
+/**
+* \brief The ClockQuality represents the quality of a clock
+ */
+typedef struct {
+	UInteger8 clockClass;
+	Enumeration8 clockAccuracy;
+	UInteger16 offsetScaledLogVariance;
+} ClockQuality;
+
+/**
+* \brief The TimePropertiesDS type represent time source and traceability properties of a clock
+ */
+typedef struct {
+	Integer16 currentUtcOffset;
+	Boolean currentUtcOffsetValid;
+	Boolean leap59;
+	Boolean leap61;
+	Boolean timeTraceable;
+	Boolean frequencyTraceable;
+	Boolean ptpTimescale;
+	Enumeration8 timeSource; /**< spec 7.6.2.6 */
+} TimePropertiesDS;
+
+/**
+* \brief The TLV type represents TLV extension fields
+ */
+typedef struct {
+	Enumeration16 tlvType;
+	UInteger16 lengthField;
+	Octet* valueField;
+} TLV;
+
+/**
+* \brief The PTPText data type is used to represent textual material in PTP messages
+ */
+typedef struct {
+	UInteger8 lengthField;
+	Octet* textField;
+} PTPText;
+
+/**
+* \brief The FaultRecord type is used to construct fault logs
+ */
+typedef struct {
+	UInteger16 faultRecordLength;
+	Timestamp faultTime;
+	Enumeration8 severityCode;
+	PTPText faultName;
+	PTPText faultValue;
+	PTPText faultDescription;
+} FaultRecord;
+
+/**
+* \brief The PhysicalAddress type is used to represent a physical address
+ */
+typedef struct {
+	UInteger16 addressLength;
+	Octet*  addressField;
+} PhysicalAddress;
+
+
+/**
+* \brief The common header for all PTP messages (Table 18 of the spec)
+ */
+/* Message header */
+typedef struct {
+	NibbleUpper  transportSpecific;
+	Enumeration4 messageType;
+	UInteger4 versionPTP; 
+  UInteger16 messageLength;
+	UInteger8 domainNumber;
+	Octet flagField0;
+	Octet flagField1;
+	Integer64 correctionField;
+	PortIdentity sourcePortIdentity;
+	UInteger16 sequenceId;
+	UInteger8 controlField;
+	Integer8 logMessageInterval;	//当前的报文间隔
+} MsgHeader;
+
+/**
+* \brief Announce message fields (Table 25 of the spec)
+ */
+/*Announce Message */
+typedef struct {
+	Timestamp originTimestamp;
+	Integer16 currentUtcOffset;
+	UInteger8 grandmasterPriority1;
+	ClockQuality grandmasterClockQuality;
+	UInteger8 grandmasterPriority2;
+	ClockIdentity grandmasterIdentity;
+	UInteger16 stepsRemoved;
+	Enumeration8 timeSource;
+}MsgAnnounce;
+
+
+/**
+* \brief Sync message fields (Table 26 of the spec)
+ */
+/*Sync Message */
+typedef struct {
+	Timestamp originTimestamp;
+}MsgSync;
+
+/**
+* \brief DelayReq message fields (Table 26 of the spec)
+ */
+/*DelayReq Message */
+typedef struct {
+	Timestamp originTimestamp;
+}MsgDelayReq;
+
+/**
+* \brief DelayResp message fields (Table 30 of the spec)
+ */
+/*delayResp Message*/
+typedef struct {
+	Timestamp receiveTimestamp;
+	PortIdentity requestingPortIdentity;
+}MsgDelayResp;
+
+/**
+* \brief FollowUp message fields (Table 27 of the spec)
+ */
+/*Follow-up Message*/
+typedef struct {
+	Timestamp preciseOriginTimestamp;
+}MsgFollowUp;
+
+/**
+* \brief PDelayReq message fields (Table 29 of the spec)
+ */
+/*PdelayReq Message*/
+typedef struct {
+	Timestamp originTimestamp;
+}MsgPDelayReq;
+
+/**
+* \brief PDelayResp message fields (Table 30 of the spec)
+ */
+/*PdelayResp Message*/
+typedef struct {
+	Timestamp requestReceiptTimestamp;
+	PortIdentity requestingPortIdentity;
+}MsgPDelayResp;
+
+/**
+* \brief PDelayRespFollowUp message fields (Table 31 of the spec)
+ */
+/*PdelayRespFollowUp Message*/
+typedef struct {
+	Timestamp responseOriginTimestamp;
+	PortIdentity requestingPortIdentity;
+}MsgPDelayRespFollowUp;
+
+/**
+* \brief Signaling message fields (Table 33 of the spec)
+ */
+/*Signaling Message*/
+typedef struct {
+	PortIdentity targetPortIdentity;
+	char* tlv;
+}MsgSignaling;
+
+
+/**
+ * \brief Management TLV message fields
+ */
+/* Management TLV Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/managementTLV.def"
+	Octet* dataField;
+} ManagementTLV;
+
+/**
+ * \brief Management TLV Clock Description fields (Table 41 of the spec)
+ */
+/* Management TLV Clock Description Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/clockDescription.def"
+} MMClockDescription;
+
+/**
+ * \brief Management TLV User Description fields (Table 43 of the spec)
+ */
+/* Management TLV User Description Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/userDescription.def"
+} MMUserDescription;
+
+/**
+ * \brief Management TLV Initialize fields (Table 44 of the spec)
+ */
+/* Management TLV Initialize Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/initialize.def"
+} MMInitialize;
+
+/**
+ * \brief Management TLV Default Data Set fields (Table 50 of the spec)
+ */
+/* Management TLV Default Data Set Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/defaultDataSet.def"
+} MMDefaultDataSet;
+
+/**
+ * \brief Management TLV Current Data Set fields (Table 55 of the spec)
+ */
+/* Management TLV Current Data Set Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/currentDataSet.def"
+} MMCurrentDataSet;
+
+/**
+ * \brief Management TLV Parent Data Set fields (Table 56 of the spec)
+ */
+/* Management TLV Parent Data Set Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/parentDataSet.def"
+} MMParentDataSet;
+
+/**
+ * \brief Management TLV Time Properties Data Set fields (Table 57 of the spec)
+ */
+/* Management TLV Time Properties Data Set Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/timePropertiesDataSet.def"
+} MMTimePropertiesDataSet;
+
+/**
+ * \brief Management TLV Port Data Set fields (Table 61 of the spec)
+ */
+/* Management TLV Port Data Set Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/portDataSet.def"
+} MMPortDataSet;
+
+/**
+ * \brief Management TLV Priority1 fields (Table 51 of the spec)
+ */
+/* Management TLV Priority1 Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/priority1.def"
+} MMPriority1;
+
+/**
+ * \brief Management TLV Priority2 fields (Table 52 of the spec)
+ */
+/* Management TLV Priority2 Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/priority2.def"
+} MMPriority2;
+
+/**
+ * \brief Management TLV Domain fields (Table 53 of the spec)
+ */
+/* Management TLV Domain Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/domain.def"
+} MMDomain;
+
+/**
+ * \brief Management TLV Slave Only fields (Table 54 of the spec)
+ */
+/* Management TLV Slave Only Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/slaveOnly.def"
+} MMSlaveOnly;
+
+/**
+ * \brief Management TLV Log Announce Interval fields (Table 62 of the spec)
+ */
+/* Management TLV Log Announce Interval Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/logAnnounceInterval.def"
+} MMLogAnnounceInterval;
+
+/**
+ * \brief Management TLV Announce Receipt Timeout fields (Table 63 of the spec)
+ */
+/* Management TLV Announce Receipt Timeout Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/announceReceiptTimeout.def"
+} MMAnnounceReceiptTimeout;
+
+/**
+ * \brief Management TLV Log Sync Interval fields (Table 64 of the spec)
+ */
+/* Management TLV Log Sync Interval Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/logSyncInterval.def"
+} MMLogSyncInterval;
+
+/**
+ * \brief Management TLV Version Number fields (Table 67 of the spec)
+ */
+/* Management TLV Version Number Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/versionNumber.def"
+} MMVersionNumber;
+
+/**
+ * \brief Management TLV Time fields (Table 48 of the spec)
+ */
+/* Management TLV Time Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/time.def"
+} MMTime;
+
+/**
+ * \brief Management TLV Clock Accuracy fields (Table 49 of the spec)
+ */
+/* Management TLV Clock Accuracy Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/clockAccuracy.def"
+} MMClockAccuracy;
+
+/**
+ * \brief Management TLV UTC Properties fields (Table 58 of the spec)
+ */
+/* Management TLV UTC Properties Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/utcProperties.def"
+} MMUtcProperties;
+
+/**
+ * \brief Management TLV Traceability Properties fields (Table 59 of the spec)
+ */
+/* Management TLV Traceability Properties Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/traceabilityProperties.def"
+} MMTraceabilityProperties;
+
+/**
+ * \brief Management TLV Delay Mechanism fields (Table 65 of the spec)
+ */
+/* Management TLV Delay Mechanism Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/delayMechanism.def"
+} MMDelayMechanism;
+
+/**
+ * \brief Management TLV Log Min Pdelay Req Interval fields (Table 66 of the spec)
+ */
+/* Management TLV Log Min Pdelay Req Interval Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/logMinPdelayReqInterval.def"
+} MMLogMinPdelayReqInterval;
+
+/**
+ * \brief Management TLV Error Status fields (Table 71 of the spec)
+ */
+/* Management TLV Error Status Message */
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/managementTLV/errorStatus.def"
+} MMErrorStatus;
+
+/**
+* \brief Management message fields (Table 37 of the spec)
+ */
+/*management Message*/
+typedef struct {
+	#define OPERATE( name, size, type ) type name;
+	#include "def/message/management.def"
+	ManagementTLV* tlv;
+}MsgManagement;
+
+/**
+* \brief Time structure to handle Linux time information
+ */
+typedef struct {
+	Integer32 seconds;
+	Integer32 nanoseconds;
+} TimeInternal;
+
+/**
+* \brief Structure used as a timer
+ */
+typedef struct {
+	Integer32 interval;
+	Integer32 left;
+	Boolean expire;
+} IntervalTimer;
+
+/* Structure defining a PTP engine preset */
+typedef struct {
+    char* presetName;
+    Boolean slaveOnly;
+    Boolean noAdjust;
+    UInteger8_option clockClass;
+} PtpEnginePreset;
+
+/**
+* \brief ForeignMasterRecord is used to manage foreign masters
+ */
+typedef struct
+{
+	PortIdentity foreignMasterPortIdentity;
+	UInteger16 foreignMasterAnnounceMessages;
+
+	//This one is not in the spec
+	MsgAnnounce  announce;
+	MsgHeader    header;
+} ForeignMasterRecord;
+
+/**
+ * \struct PtpdCounters
+ * \brief Ptpd engine counters per port
+ */
+typedef struct
+{
+
+	/*
+	 * message sent/received counters:
+	 * - sent only incremented on success,
+	 * - received only incremented when message valid and accepted,
+	 * - looped messages to self don't increment received,
+	 */
+	uint32_t announceMessagesSent;
+	uint32_t announceMessagesReceived;
+	uint32_t syncMessagesSent;
+	uint32_t syncMessagesReceived;
+	uint32_t followUpMessagesSent;
+	uint32_t followUpMessagesReceived;
+	uint32_t delayReqMessagesSent;
+	uint32_t delayReqMessagesReceived;
+	uint32_t delayRespMessagesSent;
+	uint32_t delayRespMessagesReceived;
+	uint32_t pdelayReqMessagesSent;
+	uint32_t pdelayReqMessagesReceived;
+	uint32_t pdelayRespMessagesSent;
+	uint32_t pdelayRespMessagesReceived;
+	uint32_t pdelayRespFollowUpMessagesSent;
+	uint32_t pdelayRespFollowUpMessagesReceived;
+	uint32_t signalingMessagesSent;
+	uint32_t signalingMessagesReceived;
+	uint32_t managementMessagesSent;
+	uint32_t managementMessagesReceived;
+
+/* not implemented yet */
+#if 0
+	/* FMR counters */
+	uint32_t foreignAdded; // implement me! /* number of insertions to FMR */
+	uint32_t foreignMax; // implement me! /* maximum foreign masters seen */
+	uint32_t foreignRemoved; // implement me! /* number of FMR records deleted */
+	uint32_t foreignOverflow; // implement me! /* how many times the FMR was full */
+#endif /* 0 */
+
+	/* protocol engine counters */
+
+	uint32_t stateTransitions;	  /* number of state changes */
+	uint32_t masterChanges;		  /* number of BM changes as result of BMC */
+	uint32_t announceTimeouts;	  /* number of announce receipt timeouts */
+
+	/* discarded / uknown / ignored */
+	uint32_t discardedMessages;	  /* only messages we shouldn't be receiving - ignored from self don't count */
+	uint32_t unknownMessages;	  /* unknown type - also increments discarded */
+	uint32_t ignoredAnnounce;	  /* ignored Announce messages: acl / security / preference */
+	uint32_t aclTimingDiscardedMessages;	  /* Timing messages discarded by access lists */
+	uint32_t aclManagementDiscardedMessages;	  /* Timing messages discarded by access lists */
+
+	/* error counters */
+	uint32_t messageRecvErrors;	  /* message receive errors */
+	uint32_t messageSendErrors;	  /* message send errors */
+	uint32_t messageFormatErrors;	  /* headers or messages too short etc. */
+	uint32_t protocolErrors;	  /* conditions that shouldn't happen */
+	uint32_t versionMismatchErrors;	  /* V1 received, V2 expected - also increments discarded */
+	uint32_t domainMismatchErrors;	  /* different domain than configured - also increments discarded */
+	uint32_t sequenceMismatchErrors;  /* mismatched sequence IDs - also increments discarded */
+	uint32_t delayModeMismatchErrors; /* P2P received, E2E expected or vice versa - incremets discarded */
+
+	uint32_t maxDelayDrops; /* number of samples dropped due to maxDelay threshold */
+} PtpdCounters;
+
+/**
+ * \struct PIservo
+ * \brief PI controller model structure
+ */
+typedef struct
+{
+    Boolean noResetClock;
+    Boolean noAdjust;
+    Integer16 ap, ai;
+    Integer16 sDelay;
+    Integer16 sOffset;
+} Servo;
+
+/**
+ * \struct PtpClock
+ * \brief Main program data structure
+ */
+/* main program data structure */
+typedef struct {
+	/* Default data set */
+
+	/*Static members*/
+	Boolean twoStepFlag;								//两步法标志
+	ClockIdentity clockIdentity;				//时钟标识[8]
+	UInteger16 numberPorts;							//接口==1
+
+
+	/*Configurable members*/
+	ClockQuality clockQuality;					//时钟精度（PTP协议接口）
+
+	/*Configurable members*/
+	UInteger8 priority1;								//优先级1（PTP协议接口）
+	UInteger8 priority2;								//优先级2（PTP协议接口）
+	UInteger8 domainNumber;							//时钟域（PTP协议接口）
+	Boolean slaveOnly;									//主从模式（PTP协议接口）
+
+
+	/* Current data set */
+
+	/*Dynamic members*/
+	UInteger16 stepsRemoved;						//与GM主时钟通信路径的数量
+	TimeInternal offsetFromMaster;			//<Ts>-<Tm>
+	TimeInternal meanPathDelay;					//按机制算出来的网络延迟
+
+	/* Parent data set */
+
+	/*Dynamic members*/
+	PortIdentity parentPortIdentity;		//发送Syns消息的MASTER的PortIdentity	
+	Boolean parentStats;								//发送Syns消息的MASTER统计出来的状态
+	UInteger16 observedParentOffsetScaledLogVariance;		//时间稳定性数据-方差
+	Integer32 observedParentClockPhaseChangeRate;				//时间稳定性数据-变化率
+	ClockIdentity grandmasterIdentity;			//选中主时钟的时钟标识
+	ClockQuality grandmasterClockQuality;		//选中主时钟的精度标识
+	UInteger8 grandmasterPriority1;					//选中主时钟优先级1（PTP协议接口）
+	UInteger8 grandmasterPriority2;					//选中主时钟优先级1（PTP协议接口）
+
+	/* Global time properties data set */
+	TimePropertiesDS timePropertiesDS;						//时间性能数据集合
+
+	/* Leap second related flags */
+  Boolean leapSecondInProgress;									//闰秒标志
+  Boolean leapSecondPending;										//闰秒预告
+
+	/* Port configuration data set */
+
+	/*Static members*/
+	PortIdentity portIdentity;										//接口标识
+
+	/*Dynamic members*/
+	Enumeration8 portState;												//接口状态
+	Integer8 logMinDelayReqInterval;							//当前延迟请求间隔（0-最大2的5次方，初始值为0）
+	TimeInternal peerMeanPathDelay;								//链路延迟
+ 
+	/*Configurable members*/
+	Integer8 logAnnounceInterval;									//最小的ANNOUNCE间隔
+	UInteger8 announceReceiptTimeout;							//ANNOUNCE超时
+	Integer8 logSyncInterval;											//最小的	Sync间隔
+	Enumeration8 delayMechanism;									//延迟机制
+	Integer8 logMinPdelayReqInterval;							//最小的PdelayReq间隔
+	UInteger4 versionNumber;											//版本号
+
+
+	/* Foreign master data set */
+	ForeignMasterRecord *foreign;									//外部主钟的统计数据集
+
+	/* Other things we need for the protocol */
+	UInteger16 number_foreign_records;	//外部主时钟数
+	Integer16  max_foreign_records;			//最大主时钟数
+	Integer16  foreign_record_i;
+	Integer16  foreign_record_best;
+//	UInteger32 random_seed;
+	Boolean  record_update;    					//record标记，需要运行BMC算法的标记
+	MsgHeader msgTmpHeader;							//消息报文头（时间戳包含在内）
+
+	union {
+		MsgSync  sync;
+		MsgFollowUp  follow;
+		MsgDelayReq  req;
+		MsgDelayResp resp;
+		MsgPDelayReq  preq;
+		MsgPDelayResp  presp;
+		MsgPDelayRespFollowUp  prespfollow;
+		MsgManagement  manage;
+		MsgAnnounce  announce;
+		MsgSignaling signaling;
+	} msgTmp;														//各类同步报文的集合
+
+	MsgManagement outgoingManageTmp;
+
+	Octet msgObuf[PACKET_SIZE];					//输出报文缓存
+	Octet msgIbuf[PACKET_SIZE];					//输入报文缓存
+		
+	int followUpGap;										//followUp间隔
+
+/*
+	20110630: These variables were deprecated in favor of the ones that appear in the stats log (delayMS and delaySM)
+	
+	TimeInternal  master_to_slave_delay;
+	TimeInternal  slave_to_master_delay;
+
+	*/
+
+	TimeInternal  pdelay_req_receive_time;				//各类报文的时间
+	TimeInternal  pdelay_req_send_time;
+	TimeInternal  pdelay_resp_receive_time;
+	TimeInternal  pdelay_resp_send_time;
+	TimeInternal  sync_receive_time;
+	TimeInternal  delay_req_send_time;
+	TimeInternal  delay_req_receive_time;
+	MsgHeader		PdelayReqHeader;
+	MsgHeader		delayReqHeader;
+	TimeInternal	pdelayMS;
+	TimeInternal	pdelaySM;
+	TimeInternal	delayMS;
+	TimeInternal	delaySM;
+	TimeInternal  lastSyncCorrectionField;
+	TimeInternal  lastPdelayRespCorrectionField;
+
+	Boolean  sentPDelayReq;
+	UInteger16  sentPDelayReqSequenceId;					//各类报文的发送/接收序列号
+	UInteger16  sentDelayReqSequenceId;
+	UInteger16  sentSyncSequenceId;
+	UInteger16  sentAnnounceSequenceId;
+	UInteger16  recvPDelayReqSequenceId;
+	UInteger16  recvSyncSequenceId;
+	UInteger16  recvPDelayRespSequenceId;
+	Boolean  waitingForFollow;
+	Boolean  waitingForDelayResp;
+	
+	Filter  ofm_filt; /**< filter offset from master */			//滤波器器组
+  Filter  owd_filt; /**< filter one way delay */
+	Filter  slv_filt; /**< filter scaled log variance */
+	UInteger16 offsetHistory[2];
+	Integer32 observedDrift;
+
+//	Boolean parentStats; /**< spec 7.6.4.2 */
+//	Integer16 observedParentOffsetScaledLogVariance; /**< spec 7.6.4.3 */
+//	Integer32 observedParentClockPhaseChangeRate; /**< spec 7.6.4.4 */
+	
+	Boolean message_activity;											//有尚未处理消息
+
+	IntervalTimer  itimer[TIMER_ARRAY_SIZE];			//计数器组
+
+	NetPath netPath;															//
+
+	int listenCount; 			// number of consecutive resets to listening
+	int resetCount;
+	int announceTimeouts; 												//announce超时计数
+	int maxDelayRejected;
+
+
+	int waiting_for_first_sync;      /* 只在收到第一个SYNC报文才开启delayReq定时器 we'll only start the delayReq timer after the first sync */
+	int waiting_for_first_delayresp;                /* Just for information purposes */
+
+	uint32_t init_timestamp;                        /* When the clock was last initialised */
+	Integer32 stabilisation_time;                   /* How long (seconds) it took to stabilise the clock */
+	double last_saved_drift;                     /* Last observed drift value written to file */
+	Boolean drift_saved;                            /* Did we save a drift value already? */
+
+	/* user description is max size + 1 to leave space for a null terminator */
+	Octet user_description[USER_DESCRIPTION_MAX + 1];
+
+
+	Integer32 masterAddr;                           // used for hybrid mode, when receiving announces
+	Integer32 LastSlaveAddr;                        // used for hybrid mode, when receiving delayreqs
+
+	/*
+	 * counters - useful for debugging and monitoring,
+	 * should be exposed through management messages
+	 * and SNMP eventually
+	 */
+	PtpdCounters counters;
+	
+	Servo servo;
+	/* PI servo model */
+//	PIservo servo;
+
+	/* "panic mode" support */
+	Boolean panicMode; /* in panic mode - do not update clock or calculate offsets */
+	Boolean panicOver; /* panic mode is over, we can reset the clock */
+	int panicModeTimeLeft; /* How many 30-second periods left in panic mode */
+	Octet interfaceID[PTP_UUID_LENGTH];
+	Integer32  events;
+	
+} PtpClock;
+
+
+/**
+ * \struct RunTimeOpts
+ * \brief Program options set at run-time
+ */
+/* program options set at run-time */
+typedef struct {
+	Integer8 announceInterval;       	//ANNOUNCE间隔
+	Integer8 announceReceiptTimeout;	//ANNOUNCE超时
+	Boolean slaveOnly;								//主从模式
+	Integer8 syncInterval;						//sync间隔
+	Integer8 logMinPdelayReqInterval;	//Pdelay间隔
+	ClockQuality clockQuality;				//时钟质量(1时钟等级，2时间种差，3偏值方差)
+	TimePropertiesDS timeProperties;	//时间状态结构
+	UInteger8 priority1;							//优先级1
+	UInteger8 priority2;							//优先级2
+	UInteger8 domainNumber;						//时间域
+//	UInteger8 timeSource; //timeProperties.timeSource		已包含在时间状态中
+
+	/*
+	 * For slave state, grace period of n * announceReceiptTimeout
+	 * before going into LISTENING again - we disqualify the best GM
+	 * and keep waiting for BMC to act - if a new GM picks up,
+	 * we don't lose the calculated offsets etc. Allows seamless GM
+	 * failover with little time variation
+	 */
+
+	int announceTimeoutGracePeriod;			//ANNOUCE超时宽限次数
+//	Integer16 currentUtcOffset;					已包含在时间状态中
+
+	Octet ifaceName[IFACE_NAME_LENGTH];	//节点名（节点名长2字节）
+//	Octet* ifaceName;
+
+	Boolean	noResetClock; // don't step the clock if offset > 1s				  超1S不调整
+	Boolean stepForce; // force clock step on first sync after startup		启动后第一个同步报文强制同步
+	Boolean stepOnce; // only step clock on first sync after startup			启动后只强制同步一次
+
+
+	Boolean clearCounters; //清计数器
+
+	Integer8 masterRefreshInterval;//主时钟更新间隔
+
+	Integer32 maxReset; /* Maximum number of nanoseconds to reset *///ns级重置次数限制
+	Integer32 maxDelay; /* Maximum number of nanoseconds of delay *///ns级调整次数限制
+	Boolean	noAdjust;		//触发禁止调整标志位
+
+	Boolean 	displayPackets; //数据包（时间戳）打印信息标志位
+	Integer32  unicastAddr;		//假设单播地址的长度
+	Integer16 	s;
+	TimeInternal inboundLatency, outboundLatency, ofmShift;	//进入系统的边界延时，离开系统的边界延时，偏移
+	Integer16 max_foreign_records; //最大外来主时钟
+	Enumeration8 delayMechanism;   //延迟机制（E2E/P2P）
+	Boolean	offset_first_updated;  //协议未使用
+
+	Boolean alwaysRespectUtcOffset;	//定义为FALSE
+	Boolean preferUtcValid;					//定义为FALSE
+	Boolean requireUtcValid;				//定义为FALSE	
+	
+	int initial_delayreq;												//delayinitial
+	int subsequent_delayreq;										//重定义的的delayinitial
+	Boolean ignore_delayreq_interval_master;		//忽略主时钟delayinitial标志
+	Boolean autoDelayReqInterval;								//自动跟随DelayReq的发送间隔标志
+
+	int drift_recovery_method; /* how the observed drift is managed 		//协议未使用
+				      between restarts */
+
+//	Boolean snmp_enabled; /* SNMP subsystem enabled / disabled even if \
+				 compiled in */
+	int transport;									//传输模式（802.3/UDP）
+	int ip_mode;										//IP模式（单，组，广播）
+
+	/**
+	 * This field holds the flags denoting which subsystems
+	 * have to be re-initialised as a result of config reload.
+	 * Flags are defined in daemonconfig.h
+	 * 0 = no change
+	 */
+	UInteger32 restartSubsystems;		//协议未使用
+
+	int selectedPreset;							//协议未使用
+
+	/**
+	 *  When enabled, ptpd ensures that Sync message sequence numbers
+	 *  are increasing (consecutive sync is not lower than last).
+	 *  This can prevent reordered sequences, but can also lock the slave
+         *  up if, say, GM restarted and reset sequencing.
+	 */
+	Boolean syncSequenceChecking;		//检查发送的序列号
+
+	/**
+	  * (seconds) - if set to non-zero, slave will reset if no clock updates
+	  * after this amount of time. Used to "unclog" slave stuck on offset filter
+	  * threshold or after GM reset the Sync sequence number
+          */
+
+	int maxDelayMaxRejected;				//协议未使用
+
+	/* max reset cycles in LISTENING before full network restart */
+	int maxListen;									//最大监听次数，超过重启网络
+
+	Boolean managementEnabled;			//管理使能标志
+	Boolean managementSetEnable;		//管理修改配置使能标志
+	Servo servo;										//协议伺服
+} RunTimeOpts;
+
+ //godin 测试仪
+typedef struct timeInfo
+{
+	unsigned char frame_head; //帧头0xeb
+	unsigned char frame_head1; //帧头0x90
+	unsigned char frame_head2; //帧头0xeb
+	unsigned char frame_head3; //帧头0x90
+	unsigned int  preciseOriginTimestamp_s; //1900年1月1日0时0分以来的秒数
+	unsigned int  preciseOriginTimestamp_ns;        
+	unsigned int  sync_receive_time_s; //被测时间
+	unsigned int  sync_receive_time_ns;       
+	unsigned int  delay_req_send_time_s; //测试时间--owner
+	unsigned int  delay_req_send_time_ns;        
+	unsigned int  delay_req_receive_time_s;   
+	unsigned int  delay_req_receive_time_ns;         
+	unsigned int  pdelay_req_send_time_s; 
+	unsigned int  pdelay_req_send_time_ns; 
+	unsigned int  pdelay_req_receive_time_s; 
+	unsigned int  pdelay_req_receive_time_ns; 
+	unsigned int  pdelay_resp_send_time_s; 
+	unsigned int  pdelay_resp_send_time_ns; 
+	unsigned int  pdelay_resp_receive_time_s;
+	unsigned int  pdelay_resp_receive_time_ns;
+	int   offsetFromMaster_s;
+	int   offsetFromMaster_ns;
+	int   meanPathDelay_s;
+	int   meanPathDelay_ns;
+	int   peerMeanPathDelay_s;
+	int   peerMeanPathDelay_ns;
+	unsigned char data_type;       //对应的命令格式，见最后的枚举ptp_data_type
+	unsigned char updateNum;    //更新数据计数器 用来检查是否有新数据
+	unsigned char temp1;
+	unsigned char chkSum_1;        //时区设置
+	unsigned char frame_end0;    //帧尾=0xEF 
+	unsigned char frame_end1;    //帧尾=0x9F
+	unsigned char frame_end2;    //帧尾=0xEF 
+	unsigned char frame_end3;      //帧尾=0x9F
+}TimeInfo;
+
+#endif /*DATATYPES_H_*/
